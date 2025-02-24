@@ -50,6 +50,7 @@ resource ContentHub_Office365 'Microsoft.SecurityInsights/contentPackages@2023-0
     contentKind: 'Solution'
     displayName: 'Microsoft 365 (formerly, Office 365)'
     version: _solutionVersion
+    contentSchemaVersion: '2.0.0'
   }
 dependsOn: [Sentinel]
 }

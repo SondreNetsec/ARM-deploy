@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.33.93.31351",
-      "templateHash": "13061503935201344652"
+      "templateHash": "10974292030366738153"
     }
   },
   "parameters": {
@@ -60,7 +60,8 @@
         "contentProductId": "[format('{0}-sl-{1}', take(variables('_solutionId'), 50), uniqueString(variables('_solutionSufix')))]",
         "contentKind": "Solution",
         "displayName": "Microsoft 365 (formerly, Office 365)",
-        "version": "[variables('_solutionVersion')]"
+        "version": "[variables('_solutionVersion')]",
+        "contentSchemaVersion": "2.0.0"
       },
       "dependsOn": [
         "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('workspaceName'))]",
