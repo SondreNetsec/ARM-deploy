@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.33.93.31351",
-      "templateHash": "17393903493566892218"
+      "templateHash": "13059627725204223852"
     }
   },
   "parameters": {
@@ -23,6 +23,11 @@
       }
     }
   },
+  "variables": {
+    "_solutionId": "azuresentinel.azure-sentinel-solution-office365",
+    "_solutionVersion": "3.0.4",
+    "_solutionSufix": "[format('{0}-Solution-{1}-{2}', variables('_solutionId'), variables('_solutionId'), variables('_solutionVersion'))]"
+  },
   "resources": [
     {
       "type": "Microsoft.OperationalInsights/workspaces",
@@ -31,39 +36,45 @@
       "location": "[parameters('location')]",
       "properties": {
         "retentionInDays": 90,
-        "publicNetworkAccessForIngestion": "Enabled",
-        "publicNetworkAccessForQuery": "Enabled",
         "sku": {
           "name": "PerGB2018"
         }
       }
     },
     {
-      "type": "Microsoft.OperationsManagement/solutions",
-      "apiVersion": "2015-11-01-preview",
-      "name": "[format('SecurityInsights({0})', parameters('workspaceName'))]",
-      "location": "[parameters('location')]",
-      "properties": {
-        "workspaceResourceId": "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('workspaceName'))]"
-      },
-      "plan": {
-        "name": "[format('SecurityInsights({0})', parameters('workspaceName'))]",
-        "publisher": "Microsoft",
-        "product": "OMSGallery/SecurityInsights",
-        "promotionCode": ""
-      },
+      "type": "Microsoft.SecurityInsights/onboardingStates",
+      "apiVersion": "2024-03-01",
+      "scope": "[format('Microsoft.OperationalInsights/workspaces/{0}', parameters('workspaceName'))]",
+      "name": "default",
       "dependsOn": [
         "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('workspaceName'))]"
       ]
     },
     {
-      "type": "Microsoft.SecurityInsights/dataConnectors",
-      "apiVersion": "2022-12-01",
-      "name": "Office365",
-      "location": "[parameters('location')]",
+      "type": "Microsoft.SecurityInsights/contentPackages",
+      "apiVersion": "2023-04-01-preview",
+      "scope": "[format('Microsoft.OperationalInsights/workspaces/{0}', parameters('workspaceName'))]",
+      "name": "Microsoft 365",
       "properties": {
-        "kind": "Office365",
-        "tenantId": "[subscription().tenantId]",
+        "contentId": "[variables('_solutionId')]",
+        "contentProductId": "[format('{0}-sl-{1}', take(variables('_solutionId'), 50), uniqueString(variables('_solutionSufix')))]",
+        "contentKind": "Solution",
+        "displayName": "Microsoft 365 (formerly, Office 365)",
+        "version": "[variables('_solutionVersion')]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('workspaceName'))]",
+        "[extensionResourceId(resourceId('Microsoft.OperationalInsights/workspaces', parameters('workspaceName')), 'Microsoft.SecurityInsights/onboardingStates', 'default')]"
+      ]
+    },
+    {
+      "type": "Microsoft.SecurityInsights/dataConnectors",
+      "apiVersion": "2023-02-01-preview",
+      "scope": "[format('Microsoft.OperationalInsights/workspaces/{0}', parameters('workspaceName'))]",
+      "name": "Office365Config",
+      "location": "[parameters('location')]",
+      "kind": "Office365",
+      "properties": {
         "dataTypes": {
           "exchange": {
             "state": "Enabled"
@@ -74,8 +85,13 @@
           "teams": {
             "state": "Enabled"
           }
-        }
-      }
+        },
+        "tenantId": "[subscription().tenantId]"
+      },
+      "dependsOn": [
+        "[extensionResourceId(resourceId('Microsoft.OperationalInsights/workspaces', parameters('workspaceName')), 'Microsoft.SecurityInsights/contentPackages', 'Microsoft 365')]",
+        "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('workspaceName'))]"
+      ]
     }
   ]
 }
