@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.33.93.31351",
-      "templateHash": "13059627725204223852"
+      "templateHash": "13061503935201344652"
     }
   },
   "parameters": {
@@ -25,7 +25,7 @@
   },
   "variables": {
     "_solutionId": "azuresentinel.azure-sentinel-solution-office365",
-    "_solutionVersion": "3.0.4",
+    "_solutionVersion": "3.0.5",
     "_solutionSufix": "[format('{0}-Solution-{1}-{2}', variables('_solutionId'), variables('_solutionId'), variables('_solutionVersion'))]"
   },
   "resources": [

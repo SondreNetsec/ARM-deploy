@@ -5,7 +5,7 @@ param workspaceName string
 param location string = resourceGroup().location
 
 var _solutionId = 'azuresentinel.azure-sentinel-solution-office365'
-var _solutionVersion = '3.0.4'
+var _solutionVersion = '3.0.5'
 var _solutionSufix = '${_solutionId}-Solution-${_solutionId}-${_solutionVersion}'
 
 // 1. Create Log Analytics workspace
