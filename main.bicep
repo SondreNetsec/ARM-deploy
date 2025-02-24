@@ -37,7 +37,7 @@ resource sentinel 'Microsoft.OperationsManagement/solutions@2015-11-01-preview' 
 // 3. Optional: Enable the Office 365 connector
 //    Note: The "name" for data connectors is up to you, but must be unique in the workspace.
 //    The "kind" is "Office365". The tenantId is the subscription tenant.
-resource office365Connector 'Microsoft.SecurityInsights/dataConnectors@2025-01-01-preview' = {
+resource office365Connector 'Microsoft.SecurityInsights/dataConnectors@2022-12-01' = {
   name: 'Office365'
   location: location
   properties: {
