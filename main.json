@@ -6,13 +6,13 @@
     "_generator": {
       "name": "bicep",
       "version": "0.33.93.31351",
-      "templateHash": "5347576633557648615"
+      "templateHash": "18400685732255798134"
     }
   },
   "parameters": {
     "_artifactsLocation": {
       "type": "string",
-      "defaultValue": "https://raw.githubusercontent.com/SondreNetsec/ARM-deploy/refs/heads/main/Create-NewSolutionAndRulesFromList.ps1",
+      "defaultValue": "https://raw.githubusercontent.com/SondreNetsec/ARM-deploy/main/Create-NewSolutionAndRulesFromList.ps1",
       "metadata": {
         "description": "The base URI where artifacts required by this template are located."
       }
@@ -231,7 +231,7 @@
       "properties": {
         "azPowerShellVersion": "12.2.0",
         "arguments": "[format('-ResourceGroup {0} -Workspace {1} -Region {2} -Solutions {3} -SubscriptionId {4} -TenantId {5} -Identity {6} ', resourceGroup().name, parameters('workspaceName'), resourceGroup().location, parameters('contentSolutions'), variables('subscriptionId'), subscription().tenantId, reference('scriptIdentity').clientId)]",
-        "scriptContent": "[parameters('_artifactsLocation')]",
+        "scriptContent": "    $scriptUrl = \"${_artifactsLocation}Create-NewSolutionAndRulesFromList.ps1${_artifactsLocationSasToken}\"\r\n    $scriptContent = Invoke-WebRequest -Uri $scriptUrl -UseBasicParsing\r\n    $scriptBlock = [Scriptblock]::Create($scriptContent.Content)\r\n    Invoke-Command -ScriptBlock $scriptBlock -ArgumentList $args\r\n  ",
         "timeout": "PT30M",
         "cleanupPreference": "OnSuccess",
         "retentionInterval": "P1D"

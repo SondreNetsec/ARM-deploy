@@ -1,5 +1,5 @@
 @description('The base URI where artifacts required by this template are located.')
-param _artifactsLocation string = 'https://raw.githubusercontent.com/SondreNetsec/ARM-deploy/refs/heads/main/Create-NewSolutionAndRulesFromList.ps1'
+param _artifactsLocation string = 'https://raw.githubusercontent.com/SondreNetsec/ARM-deploy/main/Create-NewSolutionAndRulesFromList.ps1'
 
 @description('The sasToken required to access _artifactsLocation.')
 @secure()
@@ -174,7 +174,13 @@ resource deploymentScript 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
   properties: {
     azPowerShellVersion: '12.2.0'
     arguments: '-ResourceGroup ${resourceGroup().name} -Workspace ${workspaceName} -Region ${resourceGroup().location} -Solutions ${contentSolutions} -SubscriptionId ${subscriptionId} -TenantId ${subscription().tenantId} -Identity ${scriptIdentity.properties.clientId} '
-    scriptContent: _artifactsLocation
+    //primaryScriptUri: '${_artifactsLocation}${_artifactsLocationSasToken}'
+    scriptContent: '''
+    $scriptUrl = "${_artifactsLocation}Create-NewSolutionAndRulesFromList.ps1${_artifactsLocationSasToken}"
+    $scriptContent = Invoke-WebRequest -Uri $scriptUrl -UseBasicParsing
+    $scriptBlock = [Scriptblock]::Create($scriptContent.Content)
+    Invoke-Command -ScriptBlock $scriptBlock -ArgumentList $args
+  '''
     timeout: 'PT30M'
     cleanupPreference: 'OnSuccess'
     retentionInterval: 'P1D'
