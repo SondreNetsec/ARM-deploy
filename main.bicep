@@ -12,7 +12,10 @@ param workspaceName string
 param location string = resourceGroup().location
 
 @description('Which solutions to deploy automatically')
-param contentSolutions string[] 
+param contentSolutions string[] = [
+  'Microsoft Entra ID'
+  'Microsoft 365'
+]
 
 var _solutionId = 'azuresentinel.azure-sentinel-solution-office365'
 var _solutionVersion = '3.0.5'
