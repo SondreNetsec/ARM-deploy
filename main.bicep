@@ -1,12 +1,23 @@
+@description('The base URI where artifacts required by this template are located.')
+param _artifactsLocation string = deployment().properties.templateLink.uri
+
 @description('Name of the Log Analytics Workspace to create or use')
 param workspaceName string
 
 @description('Location in which to deploy resources')
 param location string = resourceGroup().location
 
+@description('Which solutions to deploy automatically')
+param contentSolutions string[] = [
+  'Microsoft Entra ID'
+  'Microsoft 365 (formerly, Office 365)'
+]
+
 var _solutionId = 'azuresentinel.azure-sentinel-solution-office365'
 var _solutionVersion = '3.0.5'
 var _solutionSufix = '${_solutionId}-Solution-${_solutionId}-${_solutionVersion}'
+var roleDefinitionId = 'ab8e14d6-4a74-4a29-9ba8-549422addade'
+var subscriptionId = subscription().id
 
 // 1. Create Log Analytics workspace
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2021-06-01' = {
@@ -77,7 +88,9 @@ resource ContentHub_Office365 'Microsoft.SecurityInsights/contentPackages@2023-0
     version: _solutionVersion
     contentSchemaVersion: '2.0.0'
   }
-dependsOn: [Sentinel]
+dependsOn: [
+  Sentinel
+]
 }
 
 
@@ -107,12 +120,62 @@ dependsOn: [Sentinel]
   }
 } 
 
+//Create the user identity to interact with Azure
+@description('The user identity for the deployment script.')
+resource scriptIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
+  name: 'script-identity'
+  location: location
+}
 
+//Pausing for 5 minutes to allow the new user identity to propagate
+resource pauseScript 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
+  name: 'pauseScript'
+  location: resourceGroup().location
+  kind: 'AzurePowerShell'
+  properties: {
+    azPowerShellVersion: '12.2.0'
+    scriptContent: 'Start-Sleep -Seconds 300'
+    timeout: 'PT30M'
+    cleanupPreference: 'OnSuccess'
+    retentionInterval: 'PT1H'
+  }
+  dependsOn: [
+    scriptIdentity
+  ]
+}
 
-// 4. (Optional) If you want a specific solution for "UEBA" (some is auto-included in Sentinel):
-//    Many UEBA capabilities are automatically part of Sentinel once enabled.
-//    Full advanced UEBA might require manual UI steps or additional licensing.
-//
-//    You might see references to "Microsoft.SecurityInsights/solutions" or "Microsoft.OperationsManagement/solutions",
-//    but typically that's the same "Sentinel" solution. 
-//    We'll skip a separate resource for UEBA here as it's usually encompassed in Sentinel's core.
+//Assign the Sentinel Contributor rights on the Resource Group to the User Identity that was just created
+resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(resourceGroup().name, roleDefinitionId)
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roleDefinitionId)
+    principalId: scriptIdentity.properties.principalId
+  }
+  dependsOn: [
+    pauseScript
+  ]
+}
+
+//  Call the external PowerShell script to deploy the solutions and rules
+resource deploymentScript 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
+  name: 'deploySolutionsScript'
+  location: resourceGroup().location
+  kind: 'AzurePowerShell'
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${scriptIdentity.id}': {}
+    }
+  }
+  properties: {
+    azPowerShellVersion: '12.2.0'
+    arguments: '-ResourceGroup ${resourceGroup().name} -Workspace ${workspaceName} -Region ${resourceGroup().location} -Solutions ${contentSolutions} -SubscriptionId ${subscriptionId} -TenantId ${subscription().tenantId} -Identity ${scriptIdentity.properties.clientId} '
+    scriptContent: loadTextContent('./Create-NewSolutionAndRulesFromList.ps1')
+    timeout: 'PT30M'
+    cleanupPreference: 'OnSuccess'
+    retentionInterval: 'P1D'
+  }
+  dependsOn: [
+    roleAssignment
+  ]
+}
