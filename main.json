@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.33.93.31351",
-      "templateHash": "15672821873547972559"
+      "templateHash": "5347576633557648615"
     }
   },
   "parameters": {
@@ -42,6 +42,10 @@
       "items": {
         "type": "string"
       },
+      "defaultValue": [
+        "Microsoft Entra ID",
+        "Microsoft 365"
+      ],
       "metadata": {
         "description": "Which solutions to deploy automatically"
       }
