@@ -6,15 +6,22 @@
     "_generator": {
       "name": "bicep",
       "version": "0.33.93.31351",
-      "templateHash": "3477582625311968511"
+      "templateHash": "15672821873547972559"
     }
   },
   "parameters": {
     "_artifactsLocation": {
       "type": "string",
-      "defaultValue": "[deployment().properties.templateLink.uri]",
+      "defaultValue": "https://raw.githubusercontent.com/SondreNetsec/ARM-deploy/refs/heads/main/Create-NewSolutionAndRulesFromList.ps1",
       "metadata": {
         "description": "The base URI where artifacts required by this template are located."
+      }
+    },
+    "_artifactsLocationSasToken": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "The sasToken required to access _artifactsLocation."
       }
     },
     "workspaceName": {
@@ -35,17 +42,12 @@
       "items": {
         "type": "string"
       },
-      "defaultValue": [
-        "Microsoft Entra ID",
-        "Microsoft 365 (formerly, Office 365)"
-      ],
       "metadata": {
         "description": "Which solutions to deploy automatically"
       }
     }
   },
   "variables": {
-    "$fxv#0": "param(\r\n    [Parameter(Mandatory = $true)][string]$ResourceGroup,\r\n    [Parameter(Mandatory = $true)][string]$Workspace,\r\n    [Parameter(Mandatory = $true)][string]$Region,\r\n    [Parameter(Mandatory = $true)][string[]]$Solutions,\r\n    [Parameter(Mandatory = $true)][string]$SubscriptionId,\r\n    [Parameter(Mandatory = $true)][string]$TenantId,\r\n    [Parameter(Mandatory = $true)][string]$Identity,\r\n    [Parameter(Mandatory = $false)][string]$Buffer\r\n)\r\n\r\nWrite-Output \"Resource Group: $ResourceGroup\"\r\nWrite-Output \"Workspace: $Workspace\"\r\nWrite-Output \"Region: $Region\"\r\nWrite-Output \"Solutions: $Solutions\"\r\nWrite-Output \"SubscriptionId: $SubscriptionId\"\r\nWrite-Output \"TenantId: $TenantId\"\r\nWrite-Output \"Identity: $Identity\"\r\nWrite-Output \"Buffer: \" $Buffer\r\n\r\n$VerbosePreference = \"Continue\"\r\n\r\nConnect-AzAccount -Identity -AccountId $Identity\r\n\r\n$SeveritiesToInclude = @(\"informational\", \"low\", \"medium\", \"high\")\r\n$apiVersion = \"?api-version=2024-03-01\"\r\n$instanceProfile = [Microsoft.Azure.Commands.Common.Authentication.Abstractions.AzureRmProfileProvider]::Instance.Profile\r\n$profileClient = New-Object -TypeName Microsoft.Azure.Commands.ResourceManager.Common.RMProfileClient -ArgumentList ($instanceProfile)\r\n$token = $profileClient.AcquireAccessToken($TenantId)\r\n$authHeader = @{\r\n    'Content-Type'  = 'application/json' \r\n    'Authorization' = 'Bearer ' + $token.AccessToken \r\n}\r\n\r\n$serverUrl = \"https://management.azure.com\"\r\n$baseUri = $serverUrl + $SubscriptionId + \"/resourceGroups/${ResourceGroup}/providers/Microsoft.OperationalInsights/workspaces/${Workspace}\"\r\n$alertUri = \"$baseUri/providers/Microsoft.SecurityInsights/alertRules/\"\r\n\r\nWrite-Output \" Base Uri: $baseUri\"\r\n\r\n# Get a list of all the solutions\r\n$url = $baseUri + \"/providers/Microsoft.SecurityInsights/contentProductPackages\" + $apiVersion\r\n\r\nWrite-Output \" Content Product Packages Uri: $url\"\r\n\r\n$allSolutions = (Invoke-RestMethod -Method \"Get\" -Uri $url -Headers $authHeader ).value\r\n\r\nWrite-Output \"Number of solutions: \" ($allSolutions.count)\r\n\r\n#Deploy each single solution\r\nforeach ($deploySolution in $Solutions) {\r\n    Write-Output \"Deploy Solution: $deploySolution\"\r\n    if ($deploySolution.StartsWith(\"[\"))\r\n    {\r\n        $deploySolution = $deploySolution.Substring(1)\r\n    }\r\n    Write-Output \"Deploy Solution: $deploySolution\"\r\n    $singleSolution = $allSolutions | Where-Object { $_.properties.displayName -Contains $deploySolution }\r\n    if ($null -eq $singleSolution) {\r\n        Write-Error \"Unable to get find solution with name $deploySolution\" \r\n    }\r\n    else {\r\n        $solutionURL = $baseUri + \"/providers/Microsoft.SecurityInsights/contentProductPackages/$($singleSolution.name)\" + $apiVersion\r\n        $solution = (Invoke-RestMethod -Method \"Get\" -Uri $solutionURL -Headers $authHeader )\r\n        Write-Output \"Solution name: \" $solution.name\r\n        $packagedContent = $solution.properties.packagedContent\r\n        #Some of the post deployment instruction contains invalid characters and since this is not displayed anywhere\r\n        #get rid of them.\r\n        foreach ($resource in $packagedContent.resources) { \r\n            if ($null -ne $resource.properties.mainTemplate.metadata.postDeployment ) { \r\n                $resource.properties.mainTemplate.metadata.postDeployment = $null \r\n            } \r\n        }\r\n        $installBody = @{\"properties\" = @{\r\n                \"parameters\" = @{\r\n                    \"workspace\"          = @{\"value\" = $Workspace }\r\n                    \"workspace-location\" = @{\"value\" = $Region }\r\n                }\r\n                \"template\"   = $packagedContent\r\n                \"mode\"       = \"Incremental\"\r\n            }\r\n        }\r\n        $deploymentName = (\"allinone-\" + $solution.name)\r\n        if ($deploymentName.Length -ge 64) {\r\n            $deploymentName = $deploymentName.Substring(0, 64)\r\n        }\r\n        $installURL = $serverUrl + $SubscriptionId + \"/resourcegroups/$($ResourceGroup)/providers/Microsoft.Resources/deployments/\" + $deploymentName + $apiVersion\r\n        Write-Output \"Deploying solution:  $deploySolution\"\r\n        Write-Output \"Deploy URL: $installURL\"\r\n        \r\n        try {\r\n            Invoke-RestMethod -Uri $installURL -Method Put -Headers $authHeader -Body ($installBody | ConvertTo-Json -EnumsAsStrings -Depth 50 -EscapeHandling EscapeNonAscii)\r\n            Write-Output \"Deployed solution:  $deploySolution\"\r\n        }\r\n        catch {\r\n            $errorReturn = $_\r\n            Write-Error $errorReturn\r\n        }\r\n    }\r\n\r\n}\r\n\r\n#####\r\n#create rules from any rule templates that came from solutions\r\n#####\r\n\r\nif (($SeveritiesToInclude -eq \"None\") -or ($null -eq $SeveritiesToInclude)) {\r\n    Exit\r\n}\r\n\r\n#Give the system time to update all the needed databases before trying to install the rules.\r\nStart-Sleep -Seconds 60\r\n\r\n#URL to get all the needed Analytic Rule templates\r\n$solutionURL = $baseUri + \"/providers/Microsoft.SecurityInsights/contentTemplates\" + $apiVersion\r\n#Add a filter only return analytic rule templates\r\n$solutionURL += \"&%24filter=(properties%2FcontentKind%20eq%20'AnalyticsRule')&%24expand=properties/mainTemplate\"\r\n\r\nWrite-Output \"Solution URL: $solutionURL\"\r\n\r\n$results = (Invoke-RestMethod -Uri $solutionURL -Method Get -Headers $authHeader).value\r\n  \r\n$BaseAlertUri = $baseUri + \"/providers/Microsoft.SecurityInsights/alertRules/\"\r\n$BaseMetaURI = $baseURI + \"/providers/Microsoft.SecurityInsights/metadata/analyticsrule-\"\r\n\r\nWrite-Output \"Results: \" ($results.count)\r\n\r\nWrite-Output \"Severities to include... $SeveritiesToInclude\"\r\n\r\n#Iterate through all the rule templates\r\n foreach ($result in $results ) {\r\n    #Make sure that the template's severity is one we want to include\r\n    $severity = $result.properties.mainTemplate.resources.properties[0].severity\r\n    Write-Output \"Rule Template's severity is... $severity  \"\r\n    if ($SeveritiesToInclude.Contains($severity.ToLower())) {\r\n        Write-Output \"Enabling alert rule template... \" $result.properties.template.resources.properties.displayName\r\n\r\n        $templateVersion = $result.properties.mainTemplate.resources.properties[1].version\r\n        $template = $result.properties.mainTemplate.resources.properties[0]\r\n        $kind = $result.properties.mainTemplate.resources.kind\r\n        $displayName = $template.displayName\r\n        $eventGroupingSettings = $template.eventGroupingSettings\r\n        if ($null -eq $eventGroupingSettings) {\r\n            $eventGroupingSettings = [ordered]@{aggregationKind = \"SingleAlert\" }\r\n        }\r\n        $body = \"\"\r\n        $properties = $result.properties.mainTemplate.resources[0].properties\r\n        $properties.enabled = $true\r\n        #Add the field to link this rule with the rule template so that the rule template will show up as used\r\n        #We had to use the \"Add-Member\" command since this field does not exist in the rule template that we are copying from.\r\n        $properties | Add-Member -NotePropertyName \"alertRuleTemplateName\" -NotePropertyValue $result.properties.mainTemplate.resources[0].name\r\n        $properties | Add-Member -NotePropertyName \"templateVersion\" -NotePropertyValue $result.properties.mainTemplate.resources[1].properties.version\r\n\r\n\r\n        #Depending on the type of alert we are creating, the body has different parameters\r\n        switch ($kind) {\r\n            \"MicrosoftSecurityIncidentCreation\" {  \r\n                $body = @{\r\n                    \"kind\"       = \"MicrosoftSecurityIncidentCreation\"\r\n                    \"properties\" = $properties\r\n                }\r\n            }\r\n            \"NRT\" {\r\n                $body = @{\r\n                    \"kind\"       = \"NRT\"\r\n                    \"properties\" = $properties\r\n                }\r\n            }\r\n            \"Scheduled\" {\r\n                $body = @{\r\n                    \"kind\"       = \"Scheduled\"\r\n                    \"properties\" = $properties\r\n                }\r\n                \r\n            }\r\n            Default { }\r\n        }\r\n        #If we have created the body...\r\n        if (\"\" -ne $body) {\r\n            #Create the GUId for the alert and create it.\r\n            $guid = (New-Guid).Guid\r\n            #Create the URI we need to create the alert.\r\n            $alertUri = $BaseAlertUri + $guid + \"?api-version=2022-12-01-preview\"\r\n            try {\r\n                Write-Output \"Attempting to create rule $($displayName)\"\r\n                $verdict = Invoke-RestMethod -Uri $alertUri -Method Put -Headers $authHeader -Body ($body | ConvertTo-Json -EnumsAsStrings -Depth 50)\r\n                #Invoke-RestMethod -Uri $installURL -Method Put -Headers $authHeader -Body ($installBody | ConvertTo-Json -EnumsAsStrings -Depth 50)\r\n                Write-Output \"Succeeded\"\r\n                $solution = $allSolutions.properties | Where-Object -Property \"contentId\" -Contains $result.properties.packageId\r\n                $metabody = @{\r\n                    \"apiVersion\" = \"2022-01-01-preview\"\r\n                    \"name\"       = \"analyticsrule-\" + $verdict.name\r\n                    \"type\"       = \"Microsoft.OperationalInsights/workspaces/providers/metadata\"\r\n                    \"id\"         = $null\r\n                    \"properties\" = @{\r\n                        \"contentId\" = $result.properties.mainTemplate.resources[0].name\r\n                        \"parentId\"  = $verdict.id\r\n                        \"kind\"      = \"AnalyticsRule\"\r\n                        \"version\"   = $templateVersion\r\n                        \"source\"    = $solution.source\r\n                        \"author\"    = $solution.author\r\n                        \"support\"   = $solution.support\r\n                    }\r\n                }\r\n                Write-Output \"    Updating metadata....\"\r\n                $metaURI = $BaseMetaURI + $verdict.name + \"?api-version=2022-01-01-preview\"\r\n                $metaVerdict = Invoke-RestMethod -Uri $metaURI -Method Put -Headers $authHeader -Body ($metabody | ConvertTo-Json -EnumsAsStrings -Depth 5)\r\n                Write-Output \"Succeeded\"\r\n            }\r\n            catch {\r\n                #The most likely error is that there is a missing dataset. There is a new\r\n                #addition to the REST API to check for the existance of a dataset but\r\n                #it only checks certain ones.  Hope to modify this to do the check\r\n                #before trying to create the alert.\r\n                $errorReturn = $_\r\n                Write-Error $errorReturn\r\n                Write-Output $errorReturn\r\n            }\r\n            #This pauses for 5 second so that we don't overload the workspace.\r\n            Start-Sleep -Seconds 1\r\n        }\r\n        else {\r\n            Write-Outout \"No body created\"\r\n        }\r\n     }\r\n } \r\n",
     "_solutionId": "azuresentinel.azure-sentinel-solution-office365",
     "_solutionVersion": "3.0.5",
     "_solutionSufix": "[format('{0}-Solution-{1}-{2}', variables('_solutionId'), variables('_solutionId'), variables('_solutionVersion'))]",
@@ -83,7 +85,7 @@
         "logAnalytics"
       ]
     },
-    "Sentinel": {
+    "SentinelOnboard": {
       "type": "Microsoft.SecurityInsights/onboardingStates",
       "apiVersion": "2024-03-01",
       "scope": "[format('Microsoft.OperationalInsights/workspaces/{0}', parameters('workspaceName'))]",
@@ -105,7 +107,7 @@
       },
       "dependsOn": [
         "logAnalytics",
-        "Sentinel"
+        "SentinelOnboard"
       ]
     },
     "uebaAnalytics": {
@@ -142,7 +144,7 @@
       },
       "dependsOn": [
         "logAnalytics",
-        "Sentinel"
+        "SentinelOnboard"
       ]
     },
     "office365Connector": {
@@ -225,7 +227,7 @@
       "properties": {
         "azPowerShellVersion": "12.2.0",
         "arguments": "[format('-ResourceGroup {0} -Workspace {1} -Region {2} -Solutions {3} -SubscriptionId {4} -TenantId {5} -Identity {6} ', resourceGroup().name, parameters('workspaceName'), resourceGroup().location, parameters('contentSolutions'), variables('subscriptionId'), subscription().tenantId, reference('scriptIdentity').clientId)]",
-        "scriptContent": "[variables('$fxv#0')]",
+        "scriptContent": "[parameters('_artifactsLocation')]",
         "timeout": "PT30M",
         "cleanupPreference": "OnSuccess",
         "retentionInterval": "P1D"

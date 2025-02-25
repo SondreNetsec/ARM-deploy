@@ -1,5 +1,9 @@
 @description('The base URI where artifacts required by this template are located.')
-param _artifactsLocation string = deployment().properties.templateLink.uri
+param _artifactsLocation string = 'https://raw.githubusercontent.com/SondreNetsec/ARM-deploy/refs/heads/main/Create-NewSolutionAndRulesFromList.ps1'
+
+@description('The sasToken required to access _artifactsLocation.')
+@secure()
+param _artifactsLocationSasToken string = ''
 
 @description('Name of the Log Analytics Workspace to create or use')
 param workspaceName string
@@ -8,10 +12,7 @@ param workspaceName string
 param location string = resourceGroup().location
 
 @description('Which solutions to deploy automatically')
-param contentSolutions string[] = [
-  'Microsoft Entra ID'
-  'Microsoft 365 (formerly, Office 365)'
-]
+param contentSolutions string[] 
 
 var _solutionId = 'azuresentinel.azure-sentinel-solution-office365'
 var _solutionVersion = '3.0.5'
@@ -46,7 +47,7 @@ resource sentinel 'Microsoft.OperationsManagement/solutions@2015-11-01-preview' 
   }
 }
 
-resource Sentinel 'Microsoft.SecurityInsights/onboardingStates@2024-03-01' = {
+resource SentinelOnboard 'Microsoft.SecurityInsights/onboardingStates@2024-03-01' = {
   name: 'default'
   scope: logAnalytics
 }
@@ -60,7 +61,7 @@ resource EntityAnalytics 'Microsoft.SecurityInsights/settings@2023-02-01-preview
     entityProviders: ['AzureActiveDirectory']
   }
   dependsOn: [
-    Sentinel
+    SentinelOnboard
   ]
 }
 
@@ -89,7 +90,7 @@ resource ContentHub_Office365 'Microsoft.SecurityInsights/contentPackages@2023-0
     contentSchemaVersion: '2.0.0'
   }
 dependsOn: [
-  Sentinel
+  SentinelOnboard
 ]
 }
 
@@ -170,7 +171,7 @@ resource deploymentScript 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
   properties: {
     azPowerShellVersion: '12.2.0'
     arguments: '-ResourceGroup ${resourceGroup().name} -Workspace ${workspaceName} -Region ${resourceGroup().location} -Solutions ${contentSolutions} -SubscriptionId ${subscriptionId} -TenantId ${subscription().tenantId} -Identity ${scriptIdentity.properties.clientId} '
-    scriptContent: loadTextContent('./Create-NewSolutionAndRulesFromList.ps1')
+    scriptContent: _artifactsLocation
     timeout: 'PT30M'
     cleanupPreference: 'OnSuccess'
     retentionInterval: 'P1D'
