@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.33.93.31351",
-      "templateHash": "10974292030366738153"
+      "templateHash": "8048868659634164176"
     }
   },
   "parameters": {
@@ -42,11 +42,64 @@
       }
     },
     {
+      "type": "Microsoft.OperationsManagement/solutions",
+      "apiVersion": "2015-11-01-preview",
+      "name": "[format('SecurityInsights({0})', parameters('workspaceName'))]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "workspaceResourceId": "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('workspaceName'))]"
+      },
+      "plan": {
+        "name": "[format('SecurityInsights({0})', parameters('workspaceName'))]",
+        "product": "OMSGallery/SecurityInsights",
+        "promotionCode": "",
+        "publisher": "Microsoft"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('workspaceName'))]"
+      ]
+    },
+    {
       "type": "Microsoft.SecurityInsights/onboardingStates",
       "apiVersion": "2024-03-01",
       "scope": "[format('Microsoft.OperationalInsights/workspaces/{0}', parameters('workspaceName'))]",
       "name": "default",
       "dependsOn": [
+        "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('workspaceName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.SecurityInsights/settings",
+      "apiVersion": "2023-02-01-preview",
+      "scope": "[format('Microsoft.OperationalInsights/workspaces/{0}', parameters('workspaceName'))]",
+      "name": "EntityAnalytics",
+      "kind": "EntityAnalytics",
+      "properties": {
+        "entityProviders": [
+          "AzureActiveDirectory"
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('workspaceName'))]",
+        "[extensionResourceId(resourceId('Microsoft.OperationalInsights/workspaces', parameters('workspaceName')), 'Microsoft.SecurityInsights/onboardingStates', 'default')]"
+      ]
+    },
+    {
+      "type": "Microsoft.SecurityInsights/settings",
+      "apiVersion": "2023-02-01-preview",
+      "scope": "[format('Microsoft.OperationalInsights/workspaces/{0}', parameters('workspaceName'))]",
+      "name": "Ueba",
+      "kind": "Ueba",
+      "properties": {
+        "dataSources": [
+          "AuditLogs",
+          "AzureActivity",
+          "SigninLogs",
+          "SecurityEvent"
+        ]
+      },
+      "dependsOn": [
+        "[extensionResourceId(resourceId('Microsoft.OperationalInsights/workspaces', parameters('workspaceName')), 'Microsoft.SecurityInsights/settings', 'EntityAnalytics')]",
         "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('workspaceName'))]"
       ]
     },

@@ -20,25 +20,50 @@ resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2021-06-01' = {
   }
 }
 
-// 2. Enable Microsoft Sentinel on the workspace
-//    This resource effectively installs the "Azure Sentinel" solution.
-/* resource sentinel 'Microsoft.OperationsManagement/solutions@2015-11-01-preview' = {
-  name: 'SecurityInsights(${logAnalytics.name})'
+// Create Microsoft Sentinel on the Log Analytics Workspace
+resource sentinel 'Microsoft.OperationsManagement/solutions@2015-11-01-preview' = {
+  name: 'SecurityInsights(${workspaceName})'
   location: location
   properties: {
     workspaceResourceId: logAnalytics.id
   }
   plan: {
-    name: 'SecurityInsights(${logAnalytics.name})'
-    publisher: 'Microsoft'
+    name: 'SecurityInsights(${workspaceName})'
     product: 'OMSGallery/SecurityInsights'
     promotionCode: ''
+    publisher: 'Microsoft'
   }
-} */
+}
 
 resource Sentinel 'Microsoft.SecurityInsights/onboardingStates@2024-03-01' = {
   name: 'default'
   scope: logAnalytics
+}
+
+// Enable the Entity Behavior directory service
+resource EntityAnalytics 'Microsoft.SecurityInsights/settings@2023-02-01-preview' = {
+  name: 'EntityAnalytics'
+  kind: 'EntityAnalytics'
+  scope: logAnalytics
+  properties: {
+    entityProviders: ['AzureActiveDirectory']
+  }
+  dependsOn: [
+    Sentinel
+  ]
+}
+
+// Enable the additional UEBA data sources
+resource uebaAnalytics 'Microsoft.SecurityInsights/settings@2023-02-01-preview' = {
+  name: 'Ueba'
+  kind: 'Ueba'
+  scope: logAnalytics
+  properties: {
+    dataSources: ['AuditLogs', 'AzureActivity', 'SigninLogs', 'SecurityEvent']
+  }
+  dependsOn: [
+    EntityAnalytics
+  ]
 }
 
 resource ContentHub_Office365 'Microsoft.SecurityInsights/contentPackages@2023-04-01-preview' = {
