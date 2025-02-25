@@ -38,6 +38,9 @@
     },
     "contentSolutions": {
       "type": "array",
+      "items": {
+        "type": "string"
+      },
       "defaultValue": [
         "Microsoft Entra ID",
         "Microsoft 365"
@@ -54,8 +57,8 @@
     "roleDefinitionId": "ab8e14d6-4a74-4a29-9ba8-549422addade",
     "subscriptionId": "[subscription().id]"
   },
-  "resources": [
-{ 
+  "resources": {
+    "logAnalytics": {
       "type": "Microsoft.OperationalInsights/workspaces",
       "apiVersion": "2021-06-01",
       "name": "[parameters('workspaceName')]",
@@ -67,7 +70,7 @@
         }
       }
     },
-    {
+    "sentinel": {
       "type": "Microsoft.OperationsManagement/solutions",
       "apiVersion": "2015-11-01-preview",
       "name": "[format('SecurityInsights({0})', parameters('workspaceName'))]",
@@ -85,7 +88,7 @@
         "logAnalytics"
       ]
     },
-    {
+    "SentinelOnboard": {
       "type": "Microsoft.SecurityInsights/onboardingStates",
       "apiVersion": "2024-03-01",
       "scope": "[format('Microsoft.OperationalInsights/workspaces/{0}', parameters('workspaceName'))]",
@@ -94,7 +97,7 @@
         "logAnalytics"
       ]
     },
-    {
+    "EntityAnalytics": {
       "type": "Microsoft.SecurityInsights/settings",
       "apiVersion": "2023-02-01-preview",
       "scope": "[format('Microsoft.OperationalInsights/workspaces/{0}', parameters('workspaceName'))]",
@@ -110,7 +113,7 @@
         "SentinelOnboard"
       ]
     },
-    {
+    "uebaAnalytics": {
       "type": "Microsoft.SecurityInsights/settings",
       "apiVersion": "2023-02-01-preview",
       "scope": "[format('Microsoft.OperationalInsights/workspaces/{0}', parameters('workspaceName'))]",
@@ -129,7 +132,7 @@
         "logAnalytics"
       ]
     },
-    {
+    "ContentHub_Office365": {
       "type": "Microsoft.SecurityInsights/contentPackages",
       "apiVersion": "2023-04-01-preview",
       "scope": "[format('Microsoft.OperationalInsights/workspaces/{0}', parameters('workspaceName'))]",
@@ -147,7 +150,7 @@
         "SentinelOnboard"
       ]
     },
-    {
+    "office365Connector": {
       "type": "Microsoft.SecurityInsights/dataConnectors",
       "apiVersion": "2023-02-01-preview",
       "scope": "[format('Microsoft.OperationalInsights/workspaces/{0}', parameters('workspaceName'))]",
@@ -173,7 +176,7 @@
         "logAnalytics"
       ]
     },
-    {
+    "scriptIdentity": {
       "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
       "apiVersion": "2023-01-31",
       "name": "script-identity",
@@ -182,7 +185,7 @@
         "description": "The user identity for the deployment script."
       }
     },
-    {
+    "pauseScript": {
       "type": "Microsoft.Resources/deploymentScripts",
       "apiVersion": "2023-08-01",
       "name": "pauseScript",
@@ -199,7 +202,7 @@
         "scriptIdentity"
       ]
     },
-    {
+    "roleAssignment": {
       "type": "Microsoft.Authorization/roleAssignments",
       "apiVersion": "2022-04-01",
       "name": "[guid(resourceGroup().name, variables('roleDefinitionId'))]",
@@ -212,7 +215,7 @@
         "scriptIdentity"
       ]
     },
-    {
+    "deploymentScript": {
       "type": "Microsoft.Resources/deploymentScripts",
       "apiVersion": "2023-08-01",
       "name": "deploySolutionsScript",
@@ -237,5 +240,5 @@
         "scriptIdentity"
       ]
     }
-  ]
+  }
 }
