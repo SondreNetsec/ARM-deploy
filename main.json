@@ -38,9 +38,7 @@
     },
     "contentSolutions": {
       "type": "array",
-      "items": {
-        "type": "string"
-      },
+
       "defaultValue": [
         "Microsoft Entra ID",
         "Microsoft 365"
