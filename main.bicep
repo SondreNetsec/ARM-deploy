@@ -174,13 +174,7 @@ resource deploymentScript 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
   properties: {
     azPowerShellVersion: '12.2.0'
     arguments: '-ResourceGroup ${resourceGroup().name} -Workspace ${workspaceName} -Region ${resourceGroup().location} -Solutions ${contentSolutions} -SubscriptionId ${subscriptionId} -TenantId ${subscription().tenantId} -Identity ${scriptIdentity.properties.clientId} '
-    //primaryScriptUri: '${_artifactsLocation}${_artifactsLocationSasToken}'
-    scriptContent: '''
-    $scriptUrl = "${_artifactsLocation}Create-NewSolutionAndRulesFromList.ps1${_artifactsLocationSasToken}"
-    $scriptContent = Invoke-WebRequest -Uri $scriptUrl -UseBasicParsing
-    $scriptBlock = [Scriptblock]::Create($scriptContent.Content)
-    Invoke-Command -ScriptBlock $scriptBlock -ArgumentList $args
-  '''
+    primaryScriptUri: '${_artifactsLocation}${_artifactsLocationSasToken}'
     timeout: 'PT30M'
     cleanupPreference: 'OnSuccess'
     retentionInterval: 'P1D'

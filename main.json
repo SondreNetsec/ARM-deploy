@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.33.93.31351",
-      "templateHash": "18400685732255798134"
+      "templateHash": "4787159183088743965"
     }
   },
   "parameters": {
@@ -231,7 +231,7 @@
       "properties": {
         "azPowerShellVersion": "12.2.0",
         "arguments": "[format('-ResourceGroup {0} -Workspace {1} -Region {2} -Solutions {3} -SubscriptionId {4} -TenantId {5} -Identity {6} ', resourceGroup().name, parameters('workspaceName'), resourceGroup().location, parameters('contentSolutions'), variables('subscriptionId'), subscription().tenantId, reference('scriptIdentity').clientId)]",
-        "scriptContent": "    $scriptUrl = \"${_artifactsLocation}Create-NewSolutionAndRulesFromList.ps1${_artifactsLocationSasToken}\"\r\n    $scriptContent = Invoke-WebRequest -Uri $scriptUrl -UseBasicParsing\r\n    $scriptBlock = [Scriptblock]::Create($scriptContent.Content)\r\n    Invoke-Command -ScriptBlock $scriptBlock -ArgumentList $args\r\n  ",
+        "primaryScriptUri": "[format('{0}{1}', parameters('_artifactsLocation'), parameters('_artifactsLocationSasToken'))]",
         "timeout": "PT30M",
         "cleanupPreference": "OnSuccess",
         "retentionInterval": "P1D"
