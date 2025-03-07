@@ -81,7 +81,7 @@ resource uebaAnalytics 'Microsoft.SecurityInsights/settings@2023-02-01-preview' 
   ]
 }
 
-resource ContentHub_Office365 'Microsoft.SecurityInsights/contentPackages@2023-04-01-preview' = {
+/* resource ContentHub_Office365 'Microsoft.SecurityInsights/contentPackages@2023-04-01-preview' = {
   name: 'Microsoft 365'
   scope: logAnalytics
   properties: {
@@ -95,7 +95,7 @@ resource ContentHub_Office365 'Microsoft.SecurityInsights/contentPackages@2023-0
 dependsOn: [
   SentinelOnboard
 ]
-}
+} */
 
 
 // 3. Optional: Enable the Office 365 connector
@@ -105,7 +105,7 @@ dependsOn: [
   name: 'Office365Config'
   scope: logAnalytics
   location: location
-  dependsOn: [ContentHub_Office365]
+  dependsOn: [deploymentScript]
   kind: 'Office365'
   properties: {   
    

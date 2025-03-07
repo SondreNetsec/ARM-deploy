@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.33.93.31351",
-      "templateHash": "4787159183088743965"
+      "templateHash": "14236134304620628213"
     }
   },
   "parameters": {
@@ -133,24 +133,6 @@
         "logAnalytics"
       ]
     },
-    "ContentHub_Office365": {
-      "type": "Microsoft.SecurityInsights/contentPackages",
-      "apiVersion": "2023-04-01-preview",
-      "scope": "[format('Microsoft.OperationalInsights/workspaces/{0}', parameters('workspaceName'))]",
-      "name": "Microsoft 365",
-      "properties": {
-        "contentId": "[variables('_solutionId')]",
-        "contentProductId": "[format('{0}-sl-{1}', take(variables('_solutionId'), 50), uniqueString(variables('_solutionSufix')))]",
-        "contentKind": "Solution",
-        "displayName": "Microsoft 365 (formerly, Office 365)",
-        "version": "[variables('_solutionVersion')]",
-        "contentSchemaVersion": "2.0.0"
-      },
-      "dependsOn": [
-        "logAnalytics",
-        "SentinelOnboard"
-      ]
-    },
     "office365Connector": {
       "type": "Microsoft.SecurityInsights/dataConnectors",
       "apiVersion": "2023-02-01-preview",
@@ -173,7 +155,7 @@
         "tenantId": "[subscription().tenantId]"
       },
       "dependsOn": [
-        "ContentHub_Office365",
+        "deploymentScript",
         "logAnalytics"
       ]
     },
